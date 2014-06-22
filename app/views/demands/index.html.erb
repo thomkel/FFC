@@ -1,0 +1,33 @@
+<h1>Listing demands</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Integer</th>
+      <th>Integer</th>
+      <th>Integer</th>
+      <th>Integer</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @demands.each do |demand| %>
+      <tr>
+        <td><%= demand.integer %></td>
+        <td><%= demand.integer %></td>
+        <td><%= demand.integer %></td>
+        <td><%= demand.integer %></td>
+        <td><%= link_to 'Show', demand %></td>
+        <td><%= link_to 'Edit', edit_demand_path(demand) %></td>
+        <td><%= link_to 'Destroy', demand, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Demand', new_demand_path %>

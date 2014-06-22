@@ -1,4 +1,12 @@
 FFC::Application.routes.draw do
+  resources :demands
+
+  resources :franchises
+
+  resources :plays
+
+  resources :recruits
+
   resources :positions
 
   resources :leagues

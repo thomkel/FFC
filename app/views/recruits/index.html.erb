@@ -1,0 +1,29 @@
+<h1>Listing recruits</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Integer</th>
+      <th>Integer</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @recruits.each do |recruit| %>
+      <tr>
+        <td><%= recruit.integer %></td>
+        <td><%= recruit.integer %></td>
+        <td><%= link_to 'Show', recruit %></td>
+        <td><%= link_to 'Edit', edit_recruit_path(recruit) %></td>
+        <td><%= link_to 'Destroy', recruit, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<br>
+
+<%= link_to 'New Recruit', new_recruit_path %>
