@@ -1,0 +1,24 @@
+<table>
+  <thead>
+    <tr>
+      <th>Pick Num</th>
+      <th>Player</th>
+      <th>Team</th>
+      <th>Keeper?</th>
+      <th>Trade?</th>      
+    </tr>
+  </thead>
+
+  <tbody>
+
+	<% for pick in 1..200 %>
+		<tr>
+			<td><%= pick %></td>
+			<td><%= @picks[pick][0] %></td>
+			<td><%= @picks[pick][1] %></td>
+			<td><%= @is_keepers[pick] %></td>
+			<td><%= @is_trades[pick] %></td>
+		</tr>
+	<% end %>
+  </tbody>
+</table>

@@ -1,0 +1,6 @@
+<% @keepers.each do |keeper| %>
+	<%= keeper.player.name %>
+	<%= keeper.last_year_points %>
+	<%= keeper.projected_points %>
+	<%= keeper.projected_points - keeper.last_year_points %><br>
+<% end %>

@@ -1,0 +1,14 @@
+<% @simpicks.each do |num, name, position, team, points, players, flex| %>
+	<%= num.to_s + ". " + name.to_s + "(" + position + "), " + team.to_s + ", " + points.to_s + ", " + players.to_s + ", " + flex.to_s %><br>
+<% end %>
+
+<% @keepers.each do |team| %>
+	<% team.each do |name, round, points, cost, comp_player| %>
+		<%= "Name: " + name +", Round: " + round.to_s + ", Point: " + points.to_s + ", Cost: " + cost.to_s + ", Comp player: " + comp_player %><br>
+	<% end %>
+<% end %>
+
+
+<% for i in 0..@keeper_points.size %>
+	<%= @keeper_points[i].to_s + ", " + @keeper_players[i].to_s %><br>
+<% end %>

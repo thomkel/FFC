@@ -1,5 +1,4 @@
 class Franchise < ActiveRecord::Base
 
-	has_one :team
-	has_one :league
+	# might be a redundant table
 end

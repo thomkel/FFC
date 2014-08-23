@@ -1,8 +1,8 @@
 class CreateRecruits < ActiveRecord::Migration
   def change
     create_table :recruits do |t|
-      t.team_id :integer
-      t.player_id :integer
+      t.integer :team_id
+      t.integer :player_id
 
       t.timestamps
     end

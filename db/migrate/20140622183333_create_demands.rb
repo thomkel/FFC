@@ -1,10 +1,10 @@
 class CreateDemands < ActiveRecord::Migration
   def change
     create_table :demands do |t|
-      t.league_id :integer
-      t.position_id :integer
-      t.num_max :integer
-      t.num_starters :integer
+      t.integer :league_id
+      t.integer :position_id
+      t.integer :max_per_position
+      t.integer :num_starters
 
       t.timestamps
     end

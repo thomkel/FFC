@@ -1,4 +1,17 @@
 FFC::Application.routes.draw do
+
+  resources :drafts
+
+  root "players#index"
+
+  get "/keepers" => "recruits#keepers"
+
+  get "/simdraft" => "drafts#predict_draft"
+
+  get "/livedraft" => "drafts#live_draft"
+
+  get "/initdraft" => "drafts#initialize_draft"
+
   resources :demands
 
   resources :franchises

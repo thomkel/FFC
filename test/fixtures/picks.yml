@@ -1,0 +1,13 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  draft_id: 1
+  pick_num: 1
+  recruit_id: 1
+  team_id: 1
+
+two:
+  draft_id: 1
+  pick_num: 1
+  recruit_id: 1
+  team_id: 1

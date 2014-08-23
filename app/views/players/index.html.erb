@@ -4,7 +4,7 @@
   <thead>
     <tr>
       <th>Name</th>
-      <th>Bye</th>
+      <th>Position</th>
       <th>Image url</th>
       <th></th>
       <th></th>
@@ -16,7 +16,7 @@
     <% @players.each do |player| %>
       <tr>
         <td><%= player.name %></td>
-        <td><%= player.bye %></td>
+        <td><%= player.position %></td>
         <td><%= player.image_url %></td>
         <td><%= link_to 'Show', player %></td>
         <td><%= link_to 'Edit', edit_player_path(player) %></td>
