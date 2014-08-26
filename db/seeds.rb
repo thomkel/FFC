@@ -184,7 +184,7 @@ end
 
 draft = Draft.new
 draft.name = "2013 Speeding Utility Draft"
-draft.type = "snake"
+draft.draft_type = "snake"
 draft.num_rounds = 20
 draft.league_id = league.id
 draft.save

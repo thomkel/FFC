@@ -4,6 +4,8 @@ FFC::Application.routes.draw do
 
   root "players#index"
 
+  post "/addpick" => "drafts#add_pick"
+
   get "/keepers" => "recruits#keepers"
 
   get "/simdraft" => "drafts#predict_draft"

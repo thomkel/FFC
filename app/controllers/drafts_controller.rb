@@ -11,29 +11,85 @@ class DraftsController < ApplicationController
     @keepers = Recruit.where('last_year_points > 0')
   end
 
+  def add_pick
+
+    player_name = params[:player]
+    player_like = "%#{player_name}%"
+    @players_found = Player.where("lower(name) LIKE ?", player_like.downcase)
+
+    @picks = Pick.where(:draft_id => session[:draft_id])
+
+    if @players_found.size == 1
+      player = @players_found.first
+      team, round = find_team_by_pick_num(session[:pick_number])
+
+      pick = Pick.new
+      pick.draft_id = session[:draft_id]
+      pick.pick_num = session[:pick_number]
+      pick.team_id = team.id
+      pick.player_id = player.id
+      pick.round = round
+      pick.save      
+
+      session[:pick_number] += 1
+
+      while (session[:pick_number] <= 200) && (!@picks.find_by(:pick_num => session[:pick_number]).nil?)
+        session[:pick_number] += 1
+      end
+
+      initialize_simulation(session[:draft_id])    
+
+      #elsif need errors
+    elsif @players_found.size == 0
+      initialize_simulation(session[:draft_id])
+    elsif @players_found.size > 1
+      initialize_simulation(session[:draft_id])
+    end
+
+
+  end
+
   def initialize_draft
-    @round_draftees = []
     # intialize teams
     league = League.find_by(:name => "Speeding Utility Ram")
     @teams = Team.where(:league_id => league.id) 
     rounds = 20 
-    @num_picks = @teams.count * rounds    
+    session[:myteam] = "Team 1 - Me"
+    session[:num_picks] = @teams.count * rounds    
+    session[:pick_number] = 1
+
+    olddraft = Draft.find_by(:name => "Speeding Utility 2014")
+
+    if !olddraft.nil?
+      Pick.where(:draft_id => olddraft.id).destroy_all
+      olddraft.destroy
+    end
+
+    draft = Draft.new
+    draft.name = "Speeding Utility 2014"
+    draft.draft_type = "Snake"
+    draft.league_id = league.id
+    draft.num_rounds = 20
+    draft.save
+
+    session[:draft_id] = draft.id
+
 
 
     #initialize array of picks
-    @draft_order = ["Team 8 - JD", "Team 10 - Dan", "Team 6 - Josh", "Team 7 - Tony", "Team 5 - Mark", "Team 1 - Me", "Team 3 - Calen", "Team 9 - Brett", "Team 2 - Tim", "Team 4 - Matt"]        
-    # @picks = Hash.new
-    @picks = []
+    session[:draft_order] = ["Team 8 - JD", "Team 10 - Dan", "Team 6 - Josh", "Team 7 - Tony", "Team 5 - Mark", "Team 1 - Me", "Team 3 - Calen", "Team 9 - Brett", "Team 2 - Tim", "Team 4 - Matt"]        
+    session[:draft_trades] = { ["Team 4 - Matt", 16] => "Team 2 - Tim", ["Team 2 - Tim", 7] => "Team 4 - Matt", ["Team 2 - Tim", 10] => "Team 4 - Matt", ["Team 8 - JD", 8] => "Team 1 - Me", ["Team 1 - Me", 13] => "Team 8 - JD" }
 
     # positions
-    @num_starters = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "LB" => 1, "DL" => 1, "DB" => 1, "K" => 1, "HC" => 1 }
-    @max_per_position = { "QB" => 2, "RB" => 5, "WR" => 5, "TE" => 2, "FLEX" => nil, "LB" => 3, "DL" => 4, "DB" => 4, "K" => 3, "HC" => 2, "BENCH" => 8, "IR" => 2 }    
+    session[:num_starters] = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "LB" => 1, "DL" => 1, "DB" => 1, "K" => 1, "HC" => 1 }
+    session[:max_per_position] = { "QB" => 2, "RB" => 5, "WR" => 5, "TE" => 2, "FLEX" => nil, "LB" => 3, "DL" => 4, "DB" => 4, "K" => 3, "HC" => 2, "BENCH" => 8, "IR" => 2 }    
 
     # initialize available players
     # queue players
     players = Recruit.order('projected_points desc')
     @qbs, @rbs, @wrs, @tes, @lbs, @dls, @dbs, @ks, @hcs = queue_players(players)    
-    initialize_players_per_position(@teams, @num_starters)        
+    queues = { "QB" => @qbs, "RB" => @rbs, "WR" => @wrs, "TE" => @tes, "LB" => @lbs, "DL" => @dls, "DB" => @dbs, "K" => @ks, "HC" => @hcs }
+    @num_players_per_position = initialize_players_per_position(@teams, session[:num_starters])        
 
     @keepers = ["Drew Brees", "A.J. Green", "Victor Cruz", "Dez Bryant", "DeMarco Murray",
       "Michael Crabtree", "Matt Forte", "Calvin Johnson", "Jay Cutler", "Rashad Jennings", "Julius Thomas", 
@@ -42,59 +98,22 @@ class DraftsController < ApplicationController
       "LeSean McCoy", "Mike Wallace", "Colin Kaepernick", "Doug Martin", "Jimmy Graham", "Le'Veon Bell", "Zac Stacy", "Eagles Coach",
       "Aaron Rodgers", "Vernon Davis", "DeSean Jackson", "Alshon Jeffery", "Montee Ball"]    
 
+    initialize_picks(session[:draft_order], draft.draft_type, @keepers, queues, @num_players_per_position)    
 
-    initialize_picks(@draft_order, "Snake", @keepers)    
+    @picks = Pick.where(:draft_id => session[:draft_id])
 
-    # test keepers entered correctly:
-    # @found, @notfound = test_keepers(@keepers)
-
-    # format [sending pick, receiving pick, round]
-    @draft_trades = { ["Team 4 - Matt", 16] => "Team 2 - Tim", ["Team 2 - Tim", 7] => "Team 4 - Matt", ["Team 2 - Tim", 10] => "Team 4 - Matt", ["Team 8 - JD", 8] => "Team 1 - Me", ["Team 1 - Me", 13] => "Team 8 - JD" }
-
-    # test draft trades entered correctly
-    # @traded, @nottraded = test_draft_trades(@draft_trades)
-
-    # redirect_to live_draft
-    
-    simulate_draft
+    initialize_simulation(draft.id)
   end
 
-  def live_draft
-    # #league, team info
-    # league = League.find_by(:name => "Speeding Utility Ram")
-    # teams = Team.where(:league_id => league.id)    
-    # # queue players
-    # players = Recruit.order('projected_points desc')
-    # qbs, rbs, wrs, tes, lbs, dls, dbs, ks, hcs = queue_players(players)
-
-    # positions
-    # num_starters = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "LB" => 1, "DL" => 1, "DB" => 1, "K" => 1, "HC" => 1 }
-    # max_per_position = { "QB" => 2, "RB" => 5, "WR" => 5, "TE" => 2, "FLEX" => nil, "LB" => 3, "DL" => 4, "DB" => 4, "K" => 3, "HC" => 2, "BENCH" => 8, "IR" => 2 }
-
-    # draft_order = ["Team 8 - JD", "Team 10 - Dan", "Team 6 - Josh", "Team 7 - Tony", "Team 5 - Mark", "Team 1 - Me", "Team 3 - Calen", "Team 9 - Brett", "Team 2 - Tim", "Team 4 - Matt"]    
-
-    # @keepers = ["Drew Brees", "A.J. Green", "Victor Cruz", "Dez Bryant", "Demarco Murray",
-    #   "Michael Crabtree", "Matt Forte", "Calvin Johnson", "Jay Cutler", "Rashad Jennings", "Julius Thomas", 
-    #   "Demaryius Thomas", "Rob Gronkowski", "Stephen Gostkowski", "Eddie Lacy", "Marshawn Lynch", "Jamaal Charles", "Greg Olsen",
-    #   "Adrian Peterson", "Brandon Marshall", "Giovani Bernard", "Percy Harvin", "Jordan Cameron", "Peyton Manning", "Julio Jones",
-    #   "LeSean McCoy", "Mike Wallace", "Colin Kaepernick", "Doug Martin", "Jimmy Graham", "Le'Veon Bell", "Zac Stacy", "Eagle Coach",
-    #   "Aaron Rodgers", "Vernon Davis", "DeSean Jackson", "Alshon Jeffrey", "Montee Ball"]    
-
-    # test keepers entered correctly:
-    # @found, @notfound = test_keepers(@keepers)
-    # @draft_trades = [["Team 4 - Matt", "Team 2 - Tim", 16], ["Team 2 - Tim", "Team 4 - Matt", 7], ["Team 2 - Tim", "Team 4 - Matt", 10], ["Team 8 - JD", "Team 1 - Me", 8], ["Team 1 - Me", "Team 8 - JD", 13]]
-
-    # test draft trades entered correctly
-    # @traded, @nottraded = test_draft_trades(@draft_trades)
-
-  end
-
-  def initialize_picks(draft_order, draft_type, keepers)
-    if draft_type == "Snake"
+  def initialize_picks(draft_order, draft_type, keepers, player_queues, positions_on_team)
+    if draft_type == "Snake" 
       ascending = true
       num_picks = 200
       pick_order = 1  
       round = 1
+
+      queues = player_queues
+      players_per_position = positions_on_team
 
       @keeper_picks = initialize_keeper_picks(keepers)
 
@@ -107,7 +126,15 @@ class DraftsController < ApplicationController
 
         if !keeper.nil?
           # @picks[[pick,team.id]] = keeper.name
-          @picks[pick] = [keeper.name, team.name]
+
+          # move to method create_new_pick
+          pick_new = Pick.new
+          pick_new.draft_id = session[:draft_id]
+          pick_new.pick_num = pick
+          pick_new.team_id = team.id
+          pick_new.player_id = keeper.id 
+          pick_new.round = round
+          pick_new.save
 
           # update position counts
           player = Player.find_by(:name => keeper.name)
@@ -116,7 +143,7 @@ class DraftsController < ApplicationController
           # @num_players_per_position[index] += 1
 
           #remove player from available player queue
-          remove_player_from_queue(player, team)
+          queues, players_per_position = remove_player_from_queue(player, team, queues, players_per_position)
         end
 
         # change draft order
@@ -136,78 +163,34 @@ class DraftsController < ApplicationController
 
     end
 
-    # build out for other types of drafts
   end
 
-  def remove_player_from_queue(player, team)
+  def remove_player_from_queue(player, team, player_queues, positions_on_team)
+
+    queues = player_queues
+    players_per_position = positions_on_team
+
     recruit = Recruit.find_by(:player_id => player.id)
 
     # establish flexkey
+    position = player.position
+    key = team.name + position
     flexkey = team.name + "FLEX"
 
-    if (@qbs.size > 0) && (player.position == "QB")
-      @qbs.delete(recruit)
-      key = team.name + "QB"
-      @num_players_per_position[key] += 1
+    queues[position].delete(recruit)
 
-    elsif (@rbs.size > 0) && (player.position == "RB")
-      @rbs.delete(recruit)
-      key = team.name + "RB"
-      num = @num_players_per_position[key]
+    # check if need to update flex
+    if (position == "RB" || position == "WR" || position == "TE") 
+      num = players_per_position[key]
 
-      if ((num == @num_starters["RB"]) && (@num_players_per_position[flexkey] == 0))
-        @num_players_per_position[flexkey] = 1
+      if ((num == session[:num_starters][position]) && (players_per_position[flexkey] == 0))
+        players_per_position[flexkey] = 1
       end
-
-      @num_players_per_position[key] += 1
-
-    elsif (@wrs.size > 0) && (player.position == "WR")
-      @wrs.delete(recruit)
-      key = team.name + "WR"
-      num = @num_players_per_position[key]
-
-      if (num == @num_starters["WR"]) && (@num_players_per_position[flexkey] == 0)
-        @num_players_per_position[flexkey] = 1
-      end
-
-      @num_players_per_position[key] += 1
-
-    elsif (@tes.size > 0) && (player.position == "TE")
-      @tes.delete(recruit)
-      key = team.name + "TE"
-      num = @num_players_per_position[key]
-
-      if (num == @num_starters["TE"]) && (@num_players_per_position[flexkey] == 0)
-        @num_players_per_position[flexkey] = 1
-      end
-
-      @num_players_per_position[key] += 1 
-
-    elsif (@lbs.size > 0) && (player.position == "LB")
-      @lbs.delete(recruit)
-      key = team.name + "LB"
-      @num_players_per_position[key] += 1
-
-    elsif (@dbs.size > 0) && (player.position == "DB")
-      @dbs.delete(recruit)   
-      key = team.name + "DB"
-      @num_players_per_position[key] += 1
-
-    elsif (@dls.size > 0) && (player.position == "DL")
-      @dls.delete(recruit)
-      key = team.name + "DL"
-      @num_players_per_position[key] += 1     
-
-    elsif (@ks.size > 0) && (player.position == "K")
-      @ks.delete(recruit)
-      key = team.name + "K"
-      @num_players_per_position[key] += 1
-
-    elsif (@hcs.size > 0) && (player.position == "HC")
-      @hcs.delete(recruit)
-      key = team.name + "HC"
-      @num_players_per_position[key] += 1     
     end
+
+    players_per_position[key] += 1
+ 
+    return queues, players_per_position
 
   end
 
@@ -221,7 +204,7 @@ class DraftsController < ApplicationController
       pick = Pick.find_by(:player_id => player_info.id) 
       team = Recruit.find_by(:player_id => player_info.id).team_id
 
-      if pick.nil?
+      if (pick.nil?) || (pick.round == 20)
         round = 20
       else
         round = (pick.round + 1)
@@ -236,171 +219,130 @@ class DraftsController < ApplicationController
   end
 
   def initialize_players_per_position(teams, positions)
-    @num_players_per_position = Hash.new(0)
+    num_players_per_position = Hash.new(0)
 
     teams.each do |team|
       positions.each do |position, num|
         string = team.name + position
 
-        @num_players_per_position[string] = 0
+        num_players_per_position[string] = 0
       end
     end    
 
+    return num_players_per_position
   end
 
-  def test_draft_trades(trades)
-    traded = []
-    nottraded = []
+  def initialize_simulation(draft_id)
+    picks = Pick.where(:draft_id => draft_id)
+    players = Recruit.order('projected_points desc') 
 
-    trades.each do |trade|
-      team1 = Team.find_by(:name => trade[0])
-      team2 = Team.find_by(:name => trade[1])
+    @sim_qbs, @sim_rbs, @sim_wrs, @sim_tes, @sim_lbs, @sim_dls, @sim_dbs, @sim_ks, @sim_hcs = queue_players(players)
 
-      if !team1.nil?
-        traded.push(team1.name)
-      else 
-        nottraded.push(trade[0])
-      end
+    queues = { "QB" => @sim_qbs, "RB" => @sim_rbs, "WR" => @sim_wrs, "TE" => @sim_tes, "LB" => @sim_lbs, "DL" => @sim_dls, "DB" => @sim_dbs, "K" => @sim_ks, "HC" => @sim_hcs }
 
-      if !team2.nil?
-        traded.push(team2.name)
-      else
-        nottraded.push(trade[1])
-      end
+    league_id = Draft.find_by(:id => session[:draft_id]).league_id
+    @sim_num_players_per_position = initialize_players_per_position(Team.where(:league_id => league_id), session[:num_starters])        
 
-    end
+    @sim_picks = []
 
-    return traded, nottraded
+    picks.each do |pick|
+      pick_num = pick.pick_num
+      player = Player.find_by(:id => pick.player_id)
+      team = Team.find_by(:id => pick.team_id)
 
 
-  end
+      @sim_picks[pick_num] = [player.name, player.position, team.name]
+      queues, @sim_num_players_per_position = remove_player_from_queue(player, team, queues, @sim_num_players_per_position)        
 
-  def test_keepers(keepers)
-    found = []
-    notfound = []
+    end    
 
-    keepers.each do |keeper|
-      player = Player.find_by(:name => keeper)
-      if player.nil?
-        notfound.push(keeper)
-      else
-        found.push(keeper)
-      end
-    end
+    @sim_picks = simulate_draft(@sim_picks, queues, @sim_num_players_per_position)    
 
-    return found, notfound
+    @suggest_picks = suggest_picks(drafted, available, players_per_position)
 
-  end
+    # if myteam, run loop with simulate draft
+    # found_suggestions = false
+    # suggestions = []
 
-  def simulate_draft
-    # league = League.find_by(:name => "Speeding Utility Ram")
-    # teams = Team.where(:league_id => league.id)
-    # rounds = 20
+    # if (@nextteam == session[:myteam])
 
-    # players = Recruit.order('projected_points desc')
+    #   @test_picks = @sim_picks
 
-    # qbs, rbs, wrs, tes, lbs, dls, dbs, ks, hcs = queue_players(players)
+    #   while found_suggestions = false
 
-
-    # num_starters = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "LB" => 1, "DL" => 1, "DB" => 1, "K" => 1, "HC" => 1 }
-    # max_per_position = { "QB" => 2, "RB" => 4, "WR" => 4, "TE" => 2, "FLEX" => nil, "LB" => 3, "DL" => 4, "DB" => 4, "K" => 3, "HC" => 2, "BENCH" => 8, "IR" => 2 }
-
-    # draft_order = ["Team 8 - JD", "Team 10 - Dan", "Team 6 - Josh", "Team 7 - Tony", "Team 5 - Mark", "Team 1 - Me", "Team 3 - Calen", "Team 9 - Brett", "Team 2 - Tim", "Team 4 - Matt"]
-
-    # # initialize players per position on each team
-    # @num_players_per_position = Hash.new(0)
-
-    # teams.each do |team|
-    #   num_starters.each do |position, num|
-    #     string = team.name + position
-
-    #     @num_players_per_position[string] = 0
+    #     suggest_picks(@test_picks)
     #   end
-    # end
+    # end    
+
+    render 'initialize_draft'         
+
+  end
+
+  def simulate_draft(picks, queues, players_per_position)
 
     ascending = true
     pick_order = 1
     round = 1
 
-    @is_keepers = []
-    @is_trades = []
-
-
-    for pick in 1..@num_picks
+    for pick in 1..session[:num_picks]
       index = pick_order - 1
-      team = Team.find_by(:name => @draft_order[index])
+      team = Team.find_by(:name => session[:draft_order][index])
 
-      trade = @draft_trades[[team.name,round]]
+      trade = session[:draft_trades][[team.name,round]]
 
       if !trade.nil?
         team = Team.find_by(:name => trade)
-        @is_trades[pick] = true
-      else
-        @is_trades[pick] = false
       end
 
-      # is_keeper = @picks[[pick,team.id]]
-      is_keeper = @picks[pick]
+      is_keeper = picks[pick]
 
       if is_keeper == nil   #not a keeper chosen
-        @is_keepers[pick] = false
 
         max = 0
         max_player = nil
 
-        draftees = [@qbs.first, @rbs.first, @wrs.first, @tes.first, @lbs.first, @dls.first, @dbs.first, @ks.first, @hcs.first]
+        draftees = []
+        queues.each do |position, players|
+          draftees.push(players[0])
+        end
 
-        # for debugging
-        @round_draftees.push(draftees)
-
-        draftees.each do |position|
-          draftee = position
+        draftees.each do |draftee|
 
           if !draftee.nil?
             draftee = Player.find_by(:id => draftee.player_id)
             position = draftee.position
 
-            @key = team.name + position
-            @flexkey = team.name + "FLEX"
-            @num_players_in_position = @num_players_per_position[@key]
+            key = team.name + position
+            flexkey = team.name + "FLEX"
+            num_players_in_position = players_per_position[key]
 
-            if @num_players_in_position < @num_starters[position]
-              @mult = 1
-            elsif ((@num_players_in_position == @num_starters[position]) && (position == "RB" || position == "WR" || position == "TE") && (@num_players_per_position[@flexkey] == 0))
-              @mult = 1
-            elsif @num_players_in_position < @max_per_position[position]
-              @mult = (@num_starters[position].to_f / 16).to_f
+            if num_players_in_position < session[:num_starters][position]
+              mult = 1
+            elsif ((num_players_in_position == session[:num_starters][position]) && (position == "RB" || position == "WR" || position == "TE") && (players_per_position[flexkey] == 0))
+              mult = 1
+            elsif num_players_in_position < session[:max_per_position][position]
+              mult = (session[:num_starters][position].to_f / 16).to_f
             else
-              @mult = 0
+              mult = 0
             end
 
-            # need to consider FLEX position
-
             points = Recruit.find_by(:player_id => draftee.id).projected_points
-            mult_points = (points.to_f * @mult).to_f
+            mult_points = (points.to_f * mult).to_f
 
             if (mult_points) > max
               max = mult_points
               @projected = points
               max_player = draftee
-              @number_picked = @num_players_per_position[team.name + draftee.position] + 1
             end
           end
         end
 
         if !max_player.nil?
-          # player_data = [pick, max_player.name, max_player.position, team.name,  max, @number_picked, used_flex]
-          # @picks[[pick,team.id]]= max_player.name
-          @picks[pick] = [max_player.name,team.name]
-          remove_player_from_queue(max_player, team)
+          picks[pick] = [max_player.name, max_player.position, team.name]
+          remove_player_from_queue(max_player, team, queues, players_per_position)
         end        
 
-      else
-        @is_keepers[pick] = true
       end
-
-
-
 
       # change draft order
       if ascending & (pick_order < 10)
@@ -416,6 +358,36 @@ class DraftsController < ApplicationController
       end
 
     end
+
+  end
+
+  def suggest_picks(picks)
+
+    @positions_picked = find_positions_picked(session[:pick_number])
+
+  end
+
+  def find_positions_picked(pick_this_round)
+    nextpick = pick_this_round + 1
+    nextpick_team, round = find_team_by_pick_num(nextpick)
+
+    positions_picked = []
+
+    while (nextpick_team.name != session[:myteam]) && (round < 21)
+
+      nextpick += 1
+
+      nextpick_team, round = find_team_by_pick_num(nextpick)
+
+      position = @sim_picks[nextpick][1]
+
+      if !positions_picked.include?(position)
+        positions_picked.push(position)
+      end
+
+    end
+
+    return positions_picked, round
 
   end
 
@@ -520,27 +492,6 @@ class DraftsController < ApplicationController
 
       for cost in 1..max_cost
 
-        # if player[cost_index] > cost
-        #   if max_values[[i-1,cost]] >= max_values[[i,cost-1]]
-        #     max_values[[i,cost]] = max_values[[i-1,cost]]
-        #     max_values_players[[i,cost]] = max_values_players[[i-1,cost]]
-        #   else
-        #     max_values[[i,cost]] = max_values[[i,cost-1]]
-        #     max_values_players[[i,cost]] = max_values_players[[i,cost-1]]
-        #   end
-        # else
-        #   player_max = max_values[[i, cost-player[cost_index]]] + player[points_index]
-
-        #   if (player_max >= max_values[[i-1,cost]]) && (player_max >= max_values[[i,cost-1]]) && !(max_values_players[[i,cost-player[cost_index]]].include?(player[name_index]))
-        #     max_values[[i,cost]] = player_max
-        #     max_values_players[[i,cost]] = max_values_players[[i, cost-player[cost_index]]] + " " + player[name_index]
-        #   elsif (max_values[[i-1,cost]] >= player_max) && (max_values[[i-1,cost]] >= max_values[[i,cost-1]])
-        #     max_values[[i,cost]] = max_values[[i-1,cost]]
-        #     max_values_players[[i,cost]] = max_values_players[[i-1,cost]]
-        #   else
-        #     max_values[[i,cost]] = max_values[[i,cost-1]]
-        #     max_values_players[[i,cost]] = max_values_players[[i,cost-1]]
-        #   end
         if player[cost_index] > cost
           max_values[[i,cost]] = max_values[[i-1,cost]]
           max_values_players[[i,cost]] = max_values_players[[i-1,cost]]
@@ -619,6 +570,88 @@ class DraftsController < ApplicationController
 
   end
 
+  def find_team_by_pick_num(pick_number)
+    ascending = true
+    num_picks = 200
+    pick_order = 1  
+    round = 1
+
+    pick_num = 1
+      # change draft order
+
+    while pick_num != pick_number
+
+      pick_num += 1
+
+      if ascending & (pick_order < 10)
+        pick_order += 1
+      elsif ascending
+        ascending = false
+        round += 1
+      elsif !ascending & (pick_order > 1)
+        pick_order -= 1
+      else
+        ascending = true
+        round += 1
+      end     
+    end
+
+    team = Team.find_by(:name => session[:draft_order][pick_order-1])
+
+    trade = session[:draft_trades][[team,round]]
+
+    if !trade.nil?
+      team = Team.find_by(:name => trade)
+    end
+
+    return team, round
+
+  end  
+
+  def test_draft_trades(trades)
+    traded = []
+    nottraded = []
+
+    trades.each do |trade|
+      team1 = Team.find_by(:name => trade[0])
+      team2 = Team.find_by(:name => trade[1])
+
+      if !team1.nil?
+        traded.push(team1.name)
+      else 
+        nottraded.push(trade[0])
+      end
+
+      if !team2.nil?
+        traded.push(team2.name)
+      else
+        nottraded.push(trade[1])
+      end
+
+    end
+
+    return traded, nottraded
+
+
+  end
+
+  def test_keepers(keepers)
+    found = []
+    notfound = []
+
+    keepers.each do |keeper|
+      player = Player.find_by(:name => keeper)
+      if player.nil?
+        notfound.push(keeper)
+      else
+        found.push(keeper)
+      end
+    end
+
+    return found, notfound
+
+  end  
+
   # GET /drafts/1
   # GET /drafts/1.json
   def show
@@ -681,6 +714,6 @@ class DraftsController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def draft_params
-      params.require(:draft).permit(:name)
+      params.permit(:name, :player)
     end
 end

@@ -1,24 +1,43 @@
+<%= form_tag("/addpick", method: "post") do %>
+	<div class="field">
+		<%= label_tag 'Enter next draft pick:' %><br>
+		<%= text_field_tag 'player', nil, placeholder: 'Player name' %><br>
+	</div>
+  	<div class="actions">	
+		<%= submit_tag "Submit draft pick", data: { confirm: "Submit player?" } %><br><br>
+	</div>
+<% end %>
+
 <table>
   <thead>
     <tr>
       <th>Pick Num</th>
       <th>Player</th>
       <th>Team</th>
-      <th>Keeper?</th>
-      <th>Trade?</th>      
+      <th>Sim pick</th>      
     </tr>
   </thead>
 
   <tbody>
 
 	<% for pick in 1..200 %>
+		<% player = @picks.find_by(:pick_num => pick) %>
 		<tr>
-			<td><%= pick %></td>
-			<td><%= @picks[pick][0] %></td>
-			<td><%= @picks[pick][1] %></td>
-			<td><%= @is_keepers[pick] %></td>
-			<td><%= @is_trades[pick] %></td>
+			<td><%= pick %></td>			
+			<td><% if player.nil? %>
+					<%= "TBD" %>
+				<% else %>
+					<strong><%= Player.find_by(:id => player.player_id).name %></strong>
+				<% end %></td>
+			<td><% if !player.nil? %>
+					<%= Team.find_by(:id => player.team_id).name %>
+				<% else %>
+					<%= @sim_picks[pick][2] %>
+				<% end %></td>
+			<td><%= @sim_picks[pick][0] +", "+@sim_picks[pick][1] %></td>
 		</tr>
 	<% end %>
   </tbody>
 </table>
+
+

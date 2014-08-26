@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140812014602) do
+ActiveRecord::Schema.define(version: 20140824213214) do
 
   create_table "demands", force: true do |t|
     t.integer  "league_id"
@@ -26,7 +26,7 @@ ActiveRecord::Schema.define(version: 20140812014602) do
     t.string   "name"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "type"
+    t.string   "draft_type"
     t.integer  "league_id"
     t.integer  "num_rounds"
   end
