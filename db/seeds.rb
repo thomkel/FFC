@@ -6,9 +6,9 @@
 #   cities = City.create([{ name: 'Chicago' }, { name: 'Copenhagen' }])
 #   Mayor.create(name: 'Emanuel', city: cities.first)
 
-require 'open-uri'
-require 'nokogiri'
-require 'mechanize'
+# require 'open-uri'
+# require 'nokogiri'
+# require 'mechanize'
 
 # seed league and teams
 
@@ -65,6 +65,12 @@ require 'mechanize'
 
 # running out of time before season starts-- new route
 
+League.destroy_all
+
+league = League.new
+league.name = "Speeding Utility Ram"
+league.save
+
 Player.destroy_all
 Recruit.destroy_all
 
@@ -75,6 +81,8 @@ def standardize_position(position)
 		return "DL"
 	elsif position == "S" || position == "CB"
 		return "DB"
+	elsif position == "D/ST"
+		position = "DEF"
 	else
 		return position
 	end
@@ -103,6 +111,7 @@ sheets.each do |sheet|
 			recruit = Recruit.new
 			recruit.player_id = new_player_id
 			recruit.projected_points = player_points
+			recruit.league_id = league.id
 			recruit.save
 
 			puts "\tNew recruit: " + recruit.player_id.to_s + ", " + recruit.projected_points.to_s
@@ -111,11 +120,6 @@ sheets.each do |sheet|
 	end
 end
 
-League.destroy_all
-
-league = League.new
-league.name = "Speeding Utility Ram"
-league.save
 
 Demand.destroy_all
 
@@ -182,6 +186,7 @@ sheets.each do |sheet|
 	end
 end
 
+
 draft = Draft.new
 draft.name = "2013 Speeding Utility Draft"
 draft.draft_type = "snake"
@@ -241,3 +246,77 @@ CSV.foreach(File.path("db/2013 Speeding Utility Draft.csv")) do |pick|
 
 end	
 
+league = League.new
+league.name = "CDW-Symantec League"
+league.save
+
+Demand.destroy_all
+
+num_starters = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "K" => 1, "DEF" => 1 }
+max_per_position = { "QB" => 5, "RB" => 5, "WR" => 5, "TE" => 5, "FLEX" => nil, "K" => 3, "BENCH" => 5 }
+
+max_per_position.each do |position, num| 
+	demand = Demand.new
+	demand.league_id = league.id
+	demand.position = position
+	demand.max_per_position = num
+	demand.num_starters = num_starters[position]
+	demand.save
+
+	puts "New demand: league-" + demand.league_id.to_s + " position-" + demand.position + " starters " + demand.num_starters.to_s + " max- " +demand.max_per_position.to_s
+end
+
+
+sheets = ["sym_qbs", "sym_rbs", "sym_wrs", "sym_tes", "sym_ks", "sym_dsts"]
+
+sheets.each do |sheet|
+	CSV.foreach(File.path("db/#{sheet}.csv")) do |player|
+		if !player[0].nil?
+			player_data = player[0].split(",")
+			player_name = player_data[0].gsub("*", "")
+			player_data = player_data[1].split(/[[:space:]]/)
+
+			player_position = player_data[2]
+
+			player_points = player[1]
+
+			found_player= Player.find_by(:name => player_name)
+			new_player_id = nil
+
+			if found_player.nil?
+
+				new_player = Player.new
+				new_player.name = player_name
+				new_player.position = standardize_position(player_position)
+				new_player.save
+
+				puts "New player: " + new_player.name
+
+				new_player_id = new_player.id
+
+			else
+				new_player_id = found_player.id
+			end
+
+			recruit = Recruit.new
+			recruit.player_id = new_player_id
+			recruit.projected_points = player_points
+			recruit.league_id = league.id
+			recruit.save
+
+			puts "\tNew recruit: " + recruit.player_id.to_s + ", " + recruit.projected_points.to_s
+
+		end
+	end
+end
+
+sheets = ["Cool Story Bro", "Riskes Business", "Mean Machine", "Phil Syms", "cs Marvelous Team", "Authorized to Win", "BigGreen Machine", "GIN is the Answer", "LeaD Em On", "The Finkanators", "Lindas Frozen Turndr", "Pam Ashleys Team", "West Coast Offense", "Holmes Skillet", "Jimmy V", "Sarcastic Smackdown"]
+
+sheets.each do |sheet|
+
+	team = Team.new
+	team.name = sheet
+	team.league_id = league.id
+	team.save	
+
+end
