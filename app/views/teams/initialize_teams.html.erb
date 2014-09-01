@@ -1,0 +1,16 @@
+<%= form_tag "/create_league_teams/#{@league}", :method => 'post' do %>
+	<% for i in 1..@num_teams %>
+		<% team = "team" + i.to_s %>
+
+		<div class="field">
+		  <%= label_tag "#{team}" %>
+		  <%= text_field_tag "#{team}" %>
+		</div>	
+		<br>
+	<% end %>
+	<div class="actions">
+		<%= submit_tag "Save New Teams" %>
+	</div>
+	<br>
+<% end %>
+

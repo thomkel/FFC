@@ -12,6 +12,32 @@ class TeamsController < ApplicationController
   def show
   end
 
+  # POST /teams/initialize_teams/1
+  def initialize_teams
+    @num_teams = params[:num_teams].to_i
+    @league = params[:league_id]
+  end
+
+  #POST /teams/create_league_teams/1
+  def create_league_teams
+    league = params[:league_id]
+
+    params.each do |k, v|
+      if k.include? "team"
+
+        team = Team.new
+        team.name = v
+        team.league_id = league
+        team.save
+
+      end
+
+    end
+
+    redirect_to "/leagues/#{league}", notice: "Teams successfully added to league"
+
+  end
+
   # GET /teams/new
   def new
     @team = Team.new

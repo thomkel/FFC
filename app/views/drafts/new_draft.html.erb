@@ -1,0 +1,52 @@
+<%= form_tag "/drafts/#{@league_id}/init_draft", :method => 'post' do %>
+	<div class="field">
+		<%= label_tag :draft_name %>
+		<%= text_field_tag :draft_name %>
+	</div><br>
+
+	<div class="field">
+	    <%= label_tag :draft_type %><br>
+    	<input type="radio" name="draft_type" value="Snake">Snake <br>
+    	<input type="radio" name="draft_type" value="Other">Other <br>	    	
+ 	</div><br>	
+
+	<div class="field">
+	    <%= label_tag :my_team %><br>
+	    <% @teams.each do |team| %>
+	    	<input type="radio" name="my_team" value=<%= team.id %>><%= team.name %> <br>
+	    <% end %>
+ 	</div><br>
+
+	<div class="field">
+		<%= label_tag :number_of_rounds %>
+		<%= text_field_tag :number_of_rounds %>
+	</div><br>
+
+	<div class="field">
+	    <% @teams.each do |team| %>
+	    	<%= label_tag team.name %>
+	    	<select name=<%= team.id %>>
+	    		<% for i in 1..@teams.size %>
+	    			<option value=<%= i.to_s %>><%= i.to_s %></option>
+	    		<% end %>
+	    	</select><br>
+	    <% end %>
+ 	</div><br>
+
+	<div class="field">
+	    <%= label_tag :keepers %><br>
+    	<input type="radio" name="keepers" value="Yes">Yes <br>
+    	<input type="radio" name="keepers" value="No">No <br>	    	
+ 	</div><br>
+	
+	<div class="field">
+	    <%= label_tag :draft_trades %><br>
+    	<input type="radio" name="trades" value="Yes">Yes <br>
+    	<input type="radio" name="trades" value="No">No <br>	    		    	
+ 	</div><br> 	
+
+	<div class="actions">
+		<%= submit_tag "Submit Draft Settings" %>
+	</div> 	
+
+<% end %>

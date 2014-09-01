@@ -1,9 +1,43 @@
 <p id="notice"><%= notice %></p>
 
-<p>
-  <strong>Name:</strong>
-  <%= @league.name %>
-</p>
+<h3>
+  <strong><%= @league.name %></strong>
+</h3>
 
+<%= link_to 'Start New Draft Companion', "/drafts/#{@league.id}/new_draft" %><br><br>
+
+<table>
+  	<thead>
+	    <tr>
+	      <th>Team</th>
+	      <th></th>
+	      <th></th>
+	    </tr>
+ 	</thead>
+
+	<tbody>
+		<% @teams.each do |team| %>		
+  			<tr>
+				<td><%= team.name%></td>
+			    <td><%= link_to 'Show', team %></td>
+				<td><%= link_to 'Edit', edit_team_path(team) %></td>
+			</tr>
+		<% end %>
+	</tbody>
+</table><br>
+
+<strong><%= "Add New Teams:" %></strong>
+<%= form_tag "/initialize_teams/#{@league.id}", :method => 'post' do %>
+	<div class="field">
+	  <%= label_tag "num_teams" %>
+	  <%= text_field_tag "num_teams" %>
+	</div>
+	<div class="actions">
+		<%= submit_tag "Enter Number of Teams" %>
+	</div>
+<% end %><br><br>
+
+<%= link_to 'Show Recruits', "/leagues/#{@league.id}/recruits" %><br><br>
+<%= link_to 'Upload Recruits', "/add_recruits/#{@league.id}" %><br><br>
 <%= link_to 'Edit', edit_league_path(@league) %> |
 <%= link_to 'Back', leagues_path %>

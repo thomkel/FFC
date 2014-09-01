@@ -10,6 +10,21 @@ class LeaguesController < ApplicationController
   # GET /leagues/1
   # GET /leagues/1.json
   def show
+    league_id = params[:id]
+
+    @teams = Team.where(:league_id => league_id)
+
+  end
+
+  def add_recruits_to_league
+    @league = params[:league_id]
+  end
+
+
+  def list_recruits
+    @league_id = params[:league]
+
+    @recruits = Recruit.where(:league_id => @league_id).order('projected_points desc') 
   end
 
   # GET /leagues/new
@@ -65,6 +80,7 @@ class LeaguesController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_league
       @league = League.find(params[:id])
+
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.

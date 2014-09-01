@@ -1,0 +1,5 @@
+<h3><%= "Recruits for " + League.find_by(:id => @league_id).name %></h3>
+
+<% @recruits.each do |recruit| %>
+	<%= Player.find_by(:id => recruit.player_id).name + ", Points: " + recruit.projected_points.to_s %><br>
+<% end %>

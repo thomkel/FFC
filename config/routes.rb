@@ -2,7 +2,7 @@ FFC::Application.routes.draw do
 
   resources :drafts
 
-  root "players#index"
+  root "leagues#index"
 
   post "/addpick" => "drafts#add_pick"
 
@@ -12,7 +12,19 @@ FFC::Application.routes.draw do
 
   get "/livedraft" => "drafts#live_draft"
 
-  get "/initdraft" => "drafts#initialize_draft"
+  get '/drafts/:league_id/new_draft' => "drafts#new_draft"
+
+  post "/drafts/:league_id/init_draft" => "drafts#initialize_draft"
+
+  get "/leagues/:league/recruits" => "leagues#list_recruits"
+
+  get "/add_recruits/:league_id" => "leagues#add_recruits_to_league"
+
+  post "/upload_recruits/:league_id" => "recruits#upload_recruits"
+
+  post "create_league_teams/:league_id" => "teams#create_league_teams"
+
+  post "initialize_teams/:league_id"  => 'teams#initialize_teams'
 
   resources :demands
 

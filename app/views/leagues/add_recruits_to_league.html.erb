@@ -1,0 +1,5 @@
+<%= form_tag("/upload_recruits/#{@league}", multipart: true) do %>
+  <%= file_field_tag :file %>
+  <%= submit_tag "Import" %>
+<% end %>
+<br><br>

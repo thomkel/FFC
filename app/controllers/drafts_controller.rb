@@ -11,6 +11,11 @@ class DraftsController < ApplicationController
     @keepers = Recruit.where(:league_id => session[:league_id]).where('last_year_points > 0')
   end
 
+  def new_draft
+    @league_id = params[:league_id]
+    @teams = Team.where(:league_id => @league_id)
+  end
+
   def add_pick  
 
     player_name = params[:player]
@@ -63,25 +68,32 @@ class DraftsController < ApplicationController
 
   def initialize_draft
     # intialize teams
+    draft_name = params[:draft_name]
+    draft_type = params[:draft_type]
+    league_id = params[:league_id].to_i
+    team_id = params[:my_team].to_i
+    my_team = Team.find_by(:id => team_id).name
+    rounds = params[:number_of_rounds].to_i
+    keepers = params[:draft_trades]
+    draft_trades = params[:draft_trades]
     
     # league = League.find_by(:name => "Speeding Utility Ram")
-    league = League.find_by(:name => "CDW-Symantec League")
-    session[:league_id] = league.id
-    @teams = Team.where(:league_id => league.id) 
+    session[:league_id] = league_id
+    @teams = Team.where(:league_id => league_id) 
     session[:num_teams] = @teams.size
     # rounds = 20 
-    session[:rounds] = 14
+    session[:rounds] = rounds
     # session[:myteam] = "Team 1 - Me"
-    session[:myteam] = "Phil Syms"
+    session[:myteam] = my_team
     session[:num_picks] = @teams.count * session[:rounds]
     session[:pick_number] = 1
 
-    olddraft = Draft.find_by(:name => "CDW-Symantec Draft")
+    # olddraft = Draft.find_by(:name => "CDW-Symantec Draft")
 
-    if !olddraft.nil?
-      Pick.where(:draft_id => olddraft.id).destroy_all
-      olddraft.destroy
-    end
+    # if !olddraft.nil?
+    #   Pick.where(:draft_id => olddraft.id).destroy_all
+    #   olddraft.destroy
+    # end
 
     # draft = Draft.new
     # draft.name = "Speeding Utility 2014"
@@ -91,25 +103,37 @@ class DraftsController < ApplicationController
     # draft.save
 
     draft = Draft.new
-    draft.name = "CDW-Symantec Draft"
-    draft.draft_type = "Snake"
-    draft.league_id = league.id
-    draft.num_rounds = 20
+    draft.name = draft_name
+    draft.draft_type = draft_type
+    draft.league_id = league_id
+    draft.num_rounds = rounds
     draft.save
+
+    draft_order = []
+
+    @teams.each do |team|
+      index = params[team.id.to_s].to_i
+      draft_order[index-1] = team.name
+    end
 
 
     session[:draft_id] = draft.id
 
     #initialize array of picks
-    session[:draft_order] = ["Sarcastic Smackdown", "West Coast Offense", "Riskes Business", "Phil Syms", "Pam Ashleys Team", "Authorized to Win", "The Finkanators", "Lindas Frozen Turndr", "GIN is the Answer",  "cs Marvelous Team",   "Holmes Skillet", "BigGreen Machine", "Cool Story Bro",  "Jimmy V",  "LeaD Em On", "Mean Machine"]        
+    session[:draft_order] = draft_order
     # session[:draft_trades] = { ["Team 4 - Matt", 16] => "Team 2 - Tim", ["Team 2 - Tim", 7] => "Team 4 - Matt", ["Team 2 - Tim", 10] => "Team 4 - Matt", ["Team 8 - JD", 8] => "Team 1 - Me", ["Team 1 - Me", 13] => "Team 8 - JD" }
+
     session[:draft_trades] = {}
+
+
+    @keepers = []
+
     # positions
     # session[:num_starters] = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "LB" => 1, "DL" => 1, "DB" => 1, "K" => 1, "HC" => 1 }
     # session[:max_per_position] = { "QB" => 2, "RB" => 5, "WR" => 5, "TE" => 2, "FLEX" => nil, "LB" => 3, "DL" => 4, "DB" => 4, "K" => 3, "HC" => 2, "BENCH" => 8, "IR" => 2 }    
     session[:num_starters] = { "QB" => 1, "RB" => 2, "WR" => 2, "TE" => 1, "FLEX" => 1, "K" => 1, "DEF" => 1 }
     session[:max_per_position] = { "QB" => 5, "RB" => 5, "WR" => 5, "TE" => 5, "FLEX" => nil, "K" => 3, "DEF" => 3, "BENCH" => 5 }
-
+    @picks = Pick.where(:draft_id => session[:draft_id])
 
     # initialize available players
     # queue players
@@ -128,11 +152,7 @@ class DraftsController < ApplicationController
     #   "LeSean McCoy", "Mike Wallace", "Colin Kaepernick", "Doug Martin", "Jimmy Graham", "Le'Veon Bell", "Zac Stacy", "Eagles Coach",
     #   "Aaron Rodgers", "Vernon Davis", "DeSean Jackson", "Alshon Jeffery", "Montee Ball"]    
 
-    @keepers = []
-
     initialize_picks(session[:draft_order], draft.draft_type, @keepers, @queues, @num_players_per_position)    
-
-    @picks = Pick.where(:draft_id => session[:draft_id])
 
     initialize_simulation(draft.id, @picks)
 
@@ -399,7 +419,7 @@ class DraftsController < ApplicationController
   end
 
   def sum_player_values(picked, simpicks, queues, players_per_position, pick_num, iterations)
-    if pick_num < session[:num_picks] && iterations < 5
+    if pick_num < session[:num_picks] && iterations < 4
 
       max_value_new = 0
       max_players_new = []
@@ -414,7 +434,8 @@ class DraftsController < ApplicationController
 
       else
 
-        positions_picked = predict_positions_picked(pick_num, nextpick, picked, queues, players_per_position)  
+        # positions_picked = predict_positions_picked(pick_num, nextpick, picked, queues, players_per_position)  
+        positions_picked = ["QB", "RB", "WR", "TE", "DEF", "K"]
 
         positions_picked.each do |position|
           @sim_queues = copy_hash(queues)
